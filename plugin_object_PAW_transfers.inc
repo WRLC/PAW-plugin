@@ -39,6 +39,7 @@ function islandora_bagit_plugin_object_PAW_transfers_init($islandora_object, $tm
     mkdir($tmp_ds_directory . '/metadata', 0777, TRUE);
 
     // Loop through the files and move them into either the 'objects' or 'metadata' subdirectory.
+    $objects = 0;
     foreach ($ds_files as $ds_filename) {
         if (file_exists($ds_filename) && is_file($ds_filename)) {
             $parts = explode('.', basename($ds_filename));
@@ -51,17 +52,28 @@ function islandora_bagit_plugin_object_PAW_transfers_init($islandora_object, $tm
                     'source' => $tmp_ds_directory . '/objects/' . $basename,
                     'dest' => 'objects/' . $basename,
                 );
+                $objects++;
             } else if (in_array( $parts[0], $md )) {
                 $basename = basename($ds_filename);
                 // move file to metadata subdirectory
-                rename($ds_filename, $tmp_ds_directory . '/metadata/' . $filename);
+                rename($ds_filename, $tmp_ds_directory . '/metadata/' . $basename);
                 // Add the file to $files_to_add array
                 $files_to_add[] = array(
-                    'source' => $tmp_ds_directory . '/metadata/' . $filename,
+                    'source' => $tmp_ds_directory . '/metadata/' . $basename,
                     'dest' => 'metadata/' . basename($ds_filename),
                 );
             }
         }
+    }
+    if (! $objects) {
+        // parents in the compound object model do not have an OBJ, AM doesn't like
+        $parent_file_path = $tmp_ds_directory . DIRECTORY_SEPARATOR . 'parent.txt';
+        file_put_contents($parent_file_path, $islandora_object->id .
+            " is the parent in a compound object. OBJ files are in the children.\n");
+        $files_to_add[] = array(
+            'source' => $parent_file_path,
+            'dest' => 'objects/OBJ.txt',
+        );
     }
 
     if (module_exists('islandora_premis')) {
